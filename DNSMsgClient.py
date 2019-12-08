@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+# Copyright (c) 2019, Richard Hughes All rights reserved.
+# Released under the BSD license. Please see LICENSE.md for more information.
 
 import sys
 import argparse
