@@ -10,14 +10,14 @@ The software is made up of two applicaitons (DNSMsgServer and DNSMsgClient) and 
 This is by no means an effecient method of sending messages but at times it may be the only way.
 
 # License
-DNSMsg is released under the BSD license. Please see LICENSE.md for more information.
+DNSMsg is released under the BSD license. Please see [LICENSE.md](https://github.com/canidorichard/DNSMsg/blob/master/LICENSE.md) for more information.
 
 # DNSMsgServer
 Usage: python3 DNSMsgServer.py -d [domain] -i [ip address to to respond with]
 
 DNSMsgServer must be run on an authoritative DNS otherwise queries from DNSMsgClient will never arive.  It is possible to adapt the client to send queries direclty to the server but from experience this is rarely useful.  The purpose of DNSMsg was to get the message through when no direct internet access was availble by routing messages from DNS server to DNS server until they find their way home.
 
-By default the DNSMsgServer will listen on UDP/53 but the port can be changed using "-p [port]".  The server will listen on TCP by specifying "-l udp" or both TCP and UDP by specifying "-l both".
+By default the DNSMsgServer will listen on UDP/53 but the port can be changed using "-p [port]".  The server will listen on TCP by specifying "-l tcp" or both TCP and UDP by specifying "-l both".
 
 # DNSMsgClient
 Usage: python3 DNSMsgClient.py -d [domain] -m [message]
