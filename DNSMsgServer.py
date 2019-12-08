@@ -82,7 +82,7 @@ def procmsg(hostname):
   # Set encoding type
   if(encoding == "2"):
     try:
-      message=base64.b32decode(payload)
+      message=base64.b32decode(payload.upper())
     except:
       message=""
   elif(encoding == "4"):
