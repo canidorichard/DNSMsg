@@ -78,27 +78,30 @@ def procmsg(hostname):
   nummsgs, payload=header[4].split(".", 1)
   payload=payload[0:len(payload)-(len(args['domain'])+2)]
   payload=payload.replace(".","")
+  
+  # Get current time for response
+  now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
 
   # Set encoding type
   if(encoding == "2"):
     try:
       message=base64.b32decode(payload.upper())
     except:
-      message=""
+      return "FAIL"
   elif(encoding == "4"):
     try:
       message=base64.b64decode(payload)
     except:
-      message=""
+      return "FAIL"
   else:
     return "FAIL"
 
   try: 
     message=message.decode("utf-8")
     print(sender + "-" + message)
-    return "OK"
+    return "OK " + now
   except:
-    message=""
+    return "FAIL"
 
 
 # Base request handler
@@ -111,8 +114,6 @@ class BaseRequestHandler(socketserver.BaseRequestHandler):
      raise NotImplementedError
 
   def handle(self):
-    now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
-
     try:
       data = self.get_data()
       self.send_data(dns_response(data))
@@ -179,8 +180,7 @@ def dns_response(data):
       if(qt == "A"):
         reply.add_answer(RR(rname=qname, rtype=getattr(QTYPE, A(IP).__class__.__name__), rclass=1, ttl=TTL, rdata=A(IP)))
       if(qt == "TXT"): 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
-        reply.add_answer(RR(rname=qname, rtype=getattr(QTYPE, TXT(IP).__class__.__name__), rclass=1, ttl=TTL, rdata=TXT(procresp+" "+now)))
+        reply.add_answer(RR(rname=qname, rtype=getattr(QTYPE, TXT(IP).__class__.__name__), rclass=1, ttl=TTL, rdata=TXT(procresp)))
    
     # Add NS recordss
     for rdata in ns:
