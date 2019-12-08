@@ -84,7 +84,7 @@ def main(args):
       sys.stderr.write("ERROR: Sent " + str(seq-1) + " of " + str(numMessages) + " queries\n")
       sys.exit(-1)
 
-  print("Sent " + str(seq) + " of " + str(numMessages) + " queries")
+  print("Server processed " + str(seq) + " of " + str(numMessages) + " queries")
 
 
 # Send DNS query
