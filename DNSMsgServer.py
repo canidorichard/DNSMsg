@@ -67,7 +67,7 @@ records = {
 def procmsg(hostname):
   # Determine if this has a chance of being a valid message
   if((hostname[0:1] != "2" and hostname[0:1] != "4") or hostname.count("-") < 4):
-    return
+    return "FAIL"
 
   # Split header elements.
   header=hostname.split("-")
@@ -91,11 +91,12 @@ def procmsg(hostname):
     except:
       message=""
   else:
-    return
+    return "FAIL"
 
   try: 
     message=message.decode("utf-8")
     print(sender + "-" + message)
+    return "OK"
   except:
     message=""
 
@@ -155,12 +156,13 @@ def dns_response(data):
   qn = str(qname)
   qtype = request.q.qtype
   qt = QTYPE[qtype]
+  procresp = "FALSE"
 
   reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
   if qn == D or qn.endswith('.' + D):
     # Process message in hostname
     if(qt == "TXT"):
-      procmsg(qn)
+      procresp = procmsg(qn)
 
     # Return specifi answer if available
     found=False
@@ -178,7 +180,7 @@ def dns_response(data):
         reply.add_answer(RR(rname=qname, rtype=getattr(QTYPE, A(IP).__class__.__name__), rclass=1, ttl=TTL, rdata=A(IP)))
       if(qt == "TXT"): 
         now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
-        reply.add_answer(RR(rname=qname, rtype=getattr(QTYPE, TXT(IP).__class__.__name__), rclass=1, ttl=TTL, rdata=TXT("OK "+now)))
+        reply.add_answer(RR(rname=qname, rtype=getattr(QTYPE, TXT(IP).__class__.__name__), rclass=1, ttl=TTL, rdata=TXT(procresp+" "+now)))
    
     # Add NS recordss
     for rdata in ns:
