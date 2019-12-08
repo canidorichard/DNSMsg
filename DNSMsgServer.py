@@ -1,3 +1,6 @@
+# Copyright (c) 2019, Richard Hughes All rights reserved.
+# Released under the BSD license. Please see LICENSE.md for more information.
+
 #!/usr/bin/env python3
 
 import sys
