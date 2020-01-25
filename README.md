@@ -13,17 +13,17 @@ This is by no means an effecient method of sending messages but at times it may 
 DNSMsg is released under the BSD license. Please see [LICENSE.md](https://github.com/canidorichard/DNSMsg/blob/master/LICENSE.md) for more information.
 
 # DNSMsgServer
-Usage: python3 DNSMsgServer.py -d [domain] -i [ip address to to respond with]
+Usage: python3 DNSMsgServer.py -d [domain]
 
-DNSMsgServer must be run on an authoritative DNS otherwise queries from DNSMsgClient will never arive.  It is possible to adapt the client to send queries direclty to the server but from experience this is rarely useful.  The purpose of DNSMsg was to get the message through when no direct internet access was availble by routing messages from DNS server to DNS server until they find their way home.
+DNSMsgServer must be run on an authoritative DNS server otherwise queries from DNSMsgClient will never arive.  It is possible to adapt the client to send queries direclty to the server but from experience this is rarely useful.  The purpose of DNSMsg was to get the message through when no direct internet access was availble by routing messages from DNS server to DNS server until they find their way home.
 
-By default the DNSMsgServer will listen on UDP/53 but the port can be changed using "-p [port]".  The server will listen on TCP by specifying "-l tcp" or both TCP and UDP by specifying "-l both".
+By default the DNSMsgServer will listen on UDP/53 but the port can be changed using "-p [port]".  The server will listen on TCP by specifying "-l tcp" or both TCP and UDP by specifying "-l both".  If you require a specific IP address to be returned in response to DNS queries then -i [ip] is what you are looking for.
 
 # DNSMsgClient
 Usage: python3 DNSMsgClient.py -d [domain] -m [message]
 
-The message  Base64 encoded by default which has been found to work well in mose cases, however Base32 encloding can be used as an alternative by specifing "-e base32" on the command line.
+The message is Base64 encoded by default which has been found to work well in most cases, however Base32 encoding can be used as an alternative by specifing "-e base32" on the command line.
 
 By default the client's MAC address is used as a sender identification but this can be replaced with an arbitrary ID by adding the command line option "-s [sender]".
 
-The message can be any length and the client will send multiple DNS queries as required to accomodate the size of the message.
+The client will send multiple DNS queries as required to accomodate the size of the message.
