@@ -17,7 +17,7 @@ from dnslib import *
 parms=argparse.ArgumentParser()
 parms.add_argument("-d", "--domain", type=str, required=True, help="Domain")
 parms.add_argument("-p", "--port", type=int, required=False, default=53, help="Port to Listen On")
-parms.add_argument("-i", "--ip", type=str, required=True, help="IP Address")
+parms.add_argument("-i", "--ip", type=str, required=False, default="127.0.0.1", help="IP Address")
 parms.add_argument("-l", "--listener", type=str, required=False, default="udp", choices=["udp","tcp","both"], help="Listener to Start")
 args = vars(parms.parse_args())
 
@@ -165,7 +165,7 @@ def dns_response(data):
     if(qt == "TXT"):
       procresp = procmsg(qn)
 
-    # Return specifi answer if available
+    # Return specific answer if available
     found=False
     for name, rrs in records.items():
       if name == qn:
