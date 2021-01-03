@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 # Copyright (c) 2019, Richard Hughes All rights reserved.
@@ -11,6 +12,7 @@ import threading
 import traceback
 import socketserver
 from dnslib import *
+import subprocess
 
 
 # Define command line arguments
@@ -19,6 +21,7 @@ parms.add_argument("-d", "--domain", type=str, required=True, help="Domain")
 parms.add_argument("-p", "--port", type=int, required=False, default=53, help="Port to Listen On")
 parms.add_argument("-i", "--ip", type=str, required=False, default="127.0.0.1", help="IP Address")
 parms.add_argument("-l", "--listener", type=str, required=False, default="udp", choices=["udp","tcp","both"], help="Listener to Start")
+parms.add_argument("-c", "--cmd", type=str, required=False, default="", help="Command to process each message passing {id} and {msg}")
 args = vars(parms.parse_args())
 
 
@@ -32,7 +35,7 @@ class DomainName(str):
 D = DomainName(args['domain']+".")
 IP = args['ip']
 PORT = args['port']
-TTL = 300
+TTL = 60
 
 
 # SOA Record
@@ -44,7 +47,7 @@ soa = SOA(
     3600,         # Refresh
     1800,         # Retry
     604800,       # Expire
-    86400,        # Minimum TTL
+    86400,        # Negative Cache (Previoulsy minimum TTL)
   )
 )
 
@@ -59,54 +62,36 @@ records = {
   D.ns1: [A(IP)], 
   D.ns2: [A(IP)],
   D.mail: [A(IP)],
-  D.localhost: [A("127.0.0.1")],
 }
 
 
 # Process message
 def procmsg(hostname):
-  # Determine if this has a chance of being a valid message
-  if((hostname[0:1] != "2" and hostname[0:1] != "4") or hostname.count("-") < 4):
-    return "FAIL"
-
-  # Split header elements.
-  header=hostname.split("-")
-  encoding=header[0]
-  sender=header[1]
-  timestamp=header[2]
-  sequence=header[3]
-  nummsgs, payload=header[4].split(".", 1)
-  payload=payload[0:len(payload)-(len(args['domain'])+2)]
-  payload=payload.replace(".","")
-  
-  # Get current time for response
-  now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
-
-  # Set encoding type
-  if(encoding == "2"):
-    try:
-      message=base64.b32decode(payload.upper())
-    except:
-      return "FAIL"
-  elif(encoding == "4"):
-    try:
-      message=base64.b64decode(payload)
-    except:
-      return "FAIL"
-  else:
-    return "FAIL"
-
-  try: 
-    message=message.decode("utf-8")
-    print(sender + "-" + message)
-    return "OK " + now
+  global IP
+  # Remove label seperators and domain name
+  hostname = hostname[0:len(hostname) - (len(args['domain'])+2)]
+  hostname = hostname.replace("0", "=")
+  hostname = hostname.replace(".", "")
+  # Attempt to decode message
+  try:
+    payload=base64.b32decode(hostname.upper())
+    id = payload[0:12].decode('utf-8')
+    msg = payload[16:].decode('utf-8')
+    # Return countert and transmission sequence as IP address
+    IP="1." + str(payload[12]) + "." + str(payload[13]) + "." + str(payload[14])
   except:
-    return "FAIL"
-
+    # Message could not be decoded
+    return
+  # Call external process to handle message
+  if(args['cmd'] != ""):
+    cmdline = args['cmd'].replace("{id}", id)
+    cmdline = cmdline.replace("{msg}", msg)
+    subprocess.Popen(cmdline, shell=True)
+  # Print message to standard out
+  print(id + "|" + msg)
 
 # Base request handler
 class BaseRequestHandler(socketserver.BaseRequestHandler):
-
   def get_data(self):
     raise NotImplementedError
 
@@ -124,7 +109,6 @@ class BaseRequestHandler(socketserver.BaseRequestHandler):
 
 # Handle DNS requests via TCP
 class TCPRequestHandler(BaseRequestHandler):
-
     def get_data(self):
         data = self.request.recv(8192).strip()
         sz = int(data[:2].encode('hex'), 16)
@@ -161,9 +145,8 @@ def dns_response(data):
 
   reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
   if qn == D or qn.endswith('.' + D):
-    # Process message in hostname
-    if(qt == "TXT"):
-      procresp = procmsg(qn)
+    # Check if we have a message in the hostname
+    procmsg(qn)
 
     # Return specific answer if available
     found=False
@@ -205,7 +188,7 @@ def main(args):
     thread = threading.Thread(target=server.serve_forever)
     thread.daemon = True
     thread.start()
-    print("%s server loop started in thread: %s" % (server.RequestHandlerClass.__name__, thread.name))
+    print("%s server started in thread: %s" % (server.RequestHandlerClass.__name__, thread.name))
 
   try:
     while 1:
@@ -219,7 +202,7 @@ def main(args):
     print("")
     for server in servers:
       server.shutdown()
-      print("%s server loop shutdown" % (server.RequestHandlerClass.__name__))
+      print("%s server shutdown" % (server.RequestHandlerClass.__name__))
 
 
 if __name__ == '__main__':

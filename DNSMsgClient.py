@@ -6,98 +6,84 @@
 import sys
 import argparse
 import base64
-import dns.resolver
+import socket
 import uuid
 import math
 import datetime
 
 
+max_dns_msg_len = 255
+
 # Define command line arguments
 parms=argparse.ArgumentParser()
 parms.add_argument("-m", "--message", type=str, required=True, help="Message")
-parms.add_argument("-e", "--encoding", type=str, required=False, default="base64", choices=['base32','base64'], help="Message Encoding")
 parms.add_argument("-d", "--domain", type=str, required=True, help="Domain")
-parms.add_argument("-s", "--sender", type=str, required=False, default=hex(uuid.getnode())[2:], help="Sender ID")
 args = vars(parms.parse_args())
 
 
 # Main processing
 def main(args):
-  # Set first part of header
-  header1=""
-  timestamp=format(int(datetime.datetime.utcnow().strftime('%H%M%S')), '01x')
-  if(args['encoding'] == "base32"):
-    header1="2-"
-  else:
-    header1="4-"
-  header1=header1+args['sender']+"-"+timestamp+"-"
+  header_len = 16
+  counter = 0
+  tx_seq = 0x00
+  msg_status = 0x30
 
-  # Calculate possible message length
-  maxQueryLen=250
-  maxHeader2Len=14 # 6 bytes Seq + 1 byte Seperator + 6 bytes Num Messages + 1 byte Seperator
-  headerLen=len(header1)+maxHeader2Len
-  domainLen=len(args['domain'])+1
-  availableLen=maxQueryLen - headerLen - domainLen
+  # Get bytes of MAC address
+  mac = hex(uuid.getnode())[2:].upper()
 
-  # Allow for encoding overhead
-  if(args['encoding'] == "base32"):
-    availableLen=int((availableLen/8)*5)
-  else:
-    availableLen=int((availableLen/8)*6)
-  # Allow for label seperators
-  availableLen=availableLen-4
- 
-  # Calculate how many queries are needed
-  message=args['message']
-  numMessages=math.ceil(len(message)/availableLen)
+  # Use millis in since last minute as unique counter value
+  dt = datetime.datetime.now()
+  counter = (dt.second * 1000) + int(dt.microsecond / 1000)
 
-  # Split message into required queries
-  header=""
-  for seq in range(1, numMessages+1):
+  # Calculate max payload size
+  max_enc_payload_length = int((max_dns_msg_len - len(args['domain'])) - 4) # Allow for 4 label seperators
+  max_dec_payload_length = int(max_enc_payload_length / 8) * 5 
+  max_dec_message_length  = max_dec_payload_length - header_len
 
-    # Compose message header
-    header=header1+format(seq, '06x')+"-"+format(numMessages, '06x')+"."
-
-    # Split message into query size chunks
-    strpos=(seq-1)*availableLen
-    msgpart=message[strpos:strpos+availableLen]
-
-    # Enclode message part
-    msgpart=msgpart.encode('utf-8')
-    if(args['encoding'] == "base32"):
-      msgpart=base64.b32encode(msgpart)
-    else:
-      msgpart=base64.b64encode(msgpart)
-    msgpart=msgpart.decode('utf-8')
-    
-    # Split message part into labels
-    labels=[msgpart[i:i+63] for i in range(0, len(msgpart), 63)]
-    payload=""
-    for label in labels:
-      payload=payload+label+"."
-
-    # Add header and domain to payload
-    payload=header+payload+args['domain']
-
+  # Generate messages
+  bytesProcessed = 0
+  while bytesProcessed < len(args['message']):
+    endIndex = bytesProcessed + max_dec_message_length
+    if(endIndex > len(args['message'])):
+      endIndex = len(args['message'])
+    # Set last message statua
+    if(endIndex == len(args['message'])):
+      msg_status = 0x31
+    # Create header bytes
+    counter_bytes = counter.to_bytes(2, 'little')
+    header = bytearray(mac, encoding="utf-8")
+    header.append(counter_bytes[0])
+    header.append(counter_bytes[1])
+    header.append(tx_seq)
+    header.append(msg_status)
+    tx_seq = tx_seq + 1
+    # Create payload
+    payload = header
+    payload.extend(args['message'][bytesProcessed:endIndex].encode('utf-8'))
+    # Base32 encode payload
+    outBuf = base64.b32encode(payload)
+    outBuf = outBuf.decode('utf-8').replace("=","0")
+    bytesProcessed = endIndex
+    # Add label seperators
+    labelStart = 0
+    labelSize = 63
+    dnsmsg = ""
+    while(labelStart < len(outBuf)):
+      if(labelStart + labelSize > len(outBuf)):
+        labelSize = len(outBuf) - labelStart
+      dnsmsg = dnsmsg + outBuf[labelStart:labelStart+labelSize]
+      labelStart = labelStart + labelSize
+      dnsmsg = dnsmsg + "."
+    dnsmsg = dnsmsg + args['domain']
     # Send message
-    if(query(payload) == False):
-      sys.stderr.write("ERROR: Sent " + str(seq-1) + " of " + str(numMessages) + " queries\n")
-      sys.exit(-1)
-
-  print("Server processed " + str(seq) + " of " + str(numMessages) + " queries")
-
-
-# Send DNS query
-def query(hostname):
-  #print(hostname)
-  try:
-    answer=dns.resolver.query(hostname+".","TXT")
-    if(str(answer[0])[1:3] == "OK"):
-      return True
-    else:
-      return False
-  except:
-    return False
+    print("Sending DNS message: ", end='')
+    ip = socket.gethostbyname(dnsmsg)
+    print(ip)
+    # Verify response
+    ip_list = ip.split('.')
+    if(int(ip_list[1]) != header[12] or int(ip_list[2]) != header[13] or int(ip_list[3]) != header[14]):
+      print("Failed: Invalid response")
+      sys.exit(1)
 
 
 if __name__ == '__main__':

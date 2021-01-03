@@ -22,8 +22,4 @@ By default the DNSMsgServer will listen on UDP/53 but the port can be changed us
 # DNSMsgClient
 Usage: python3 DNSMsgClient.py -d [domain] -m [message]
 
-The message is Base64 encoded by default which has been found to work well in most cases, however Base32 encoding can be used as an alternative by specifing "-e base32" on the command line.
-
-By default the client's MAC address is used as a sender identification but this can be replaced with an arbitrary ID by adding the command line option "-s [sender]".
-
 The client will send multiple DNS queries as required to accomodate the size of the message.
