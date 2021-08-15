@@ -13,16 +13,21 @@ import traceback
 import socketserver
 from dnslib import *
 import subprocess
+from queue import Queue
 
 
 # Define command line arguments
 parms=argparse.ArgumentParser()
 parms.add_argument("-d", "--domain", type=str, required=True, help="Domain")
-parms.add_argument("-p", "--port", type=int, required=False, default=53, help="Port to Listen On")
 parms.add_argument("-i", "--ip", type=str, required=False, default="127.0.0.1", help="IP Address")
 parms.add_argument("-l", "--listener", type=str, required=False, default="udp", choices=["udp","tcp","both"], help="Listener to Start")
 parms.add_argument("-c", "--cmd", type=str, required=False, default="", help="Command to process each message passing {id} and {msg}")
 args = vars(parms.parse_args())
+
+
+# Globals
+cmdqueue=Queue()
+shutdown = False
 
 
 # DomainName Class
@@ -82,13 +87,14 @@ def procmsg(hostname):
   except:
     # Message could not be decoded
     return
-  # Call external process to handle message
+  # Add external message handler call to the queue.
   if(args['cmd'] != ""):
     cmdline = args['cmd'].replace("{id}", id)
     cmdline = cmdline.replace("{msg}", msg)
-    subprocess.Popen(cmdline, shell=True)
+    cmdqueue.put(cmdline)
   # Print message to standard out
   print(id + "|" + msg)
+
 
 # Base request handler
 class BaseRequestHandler(socketserver.BaseRequestHandler):
@@ -175,6 +181,23 @@ def dns_response(data):
   return reply.pack()
 
 
+# External message handler
+def ExtMessageHandler():
+  while not shutdown:
+    while not cmdqueue.empty():
+      if not cmdqueue.empty():
+        c=cmdqueue.get_nowait()
+        # Use subprocess.call if Python version < 3.5
+        rc=0
+        if sys.version_info[0] > 5:
+          rc=subprocess.call(c,shell=True)
+        else:
+          p=subprocess.run(c,shell=True)
+          rc=p.returncode
+        if not rc == 0:
+          print("Error executing command: " + c + " (" + rc + ")")
+
+
 # Main processing
 def main(args):
   print("Starting DNSMsgServer.py")
@@ -189,6 +212,9 @@ def main(args):
     thread.daemon = True
     thread.start()
     print("%s server started in thread: %s" % (server.RequestHandlerClass.__name__, thread.name))
+  extmessageThread = threading.Thread(target=ExtMessageHandler)
+  extmessageThread.start
+  print("External message handler started in thread: %s" % extmessageThread.name)
 
   try:
     while 1:
@@ -203,6 +229,9 @@ def main(args):
     for server in servers:
       server.shutdown()
       print("%s server shutdown" % (server.RequestHandlerClass.__name__))
+    extmessageThread.join()
+    shutdown=True
+    print("External message handler thread shutdown")
 
 
 if __name__ == '__main__':
