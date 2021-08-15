@@ -184,7 +184,6 @@ def dns_response(data):
 def ExtMessageHandler():
   while not shutdown:
     while not cmdqueue.empty():
-      if not cmdqueue.empty():
         c=cmdqueue.get_nowait()
         # Use subprocess.call if Python version < 3.5
         rc=0
@@ -195,10 +194,12 @@ def ExtMessageHandler():
           rc=p.returncode
         if not rc == 0:
           print("Error executing command: " + c + " (" + rc + ")")
+    time.sleep(1)
 
 
 # Main processing
 def main(args):
+  global shutdown
   print("Starting DNSMsgServer.py")
   servers = []
   if(args['listener'] == 'udp' or args['listener'] == 'both'):
@@ -211,9 +212,9 @@ def main(args):
     thread.daemon = True
     thread.start()
     print("%s server started in thread: %s" % (server.RequestHandlerClass.__name__, thread.name))
-  extmessageThread = threading.Thread(target=ExtMessageHandler)
-  extmessageThread.start
-  print("External message handler started in thread: %s" % extmessageThread.name)
+  extMessageThread = threading.Thread(target=ExtMessageHandler)
+  extMessageThread.start() 
+  print("External message handler started in thread: %s" % extMessageThread.name)
 
   try:
     while 1:
@@ -228,8 +229,8 @@ def main(args):
     for server in servers:
       server.shutdown()
       print("%s server shutdown" % (server.RequestHandlerClass.__name__))
-    extmessageThread.join()
     shutdown=True
+    extMessageThread.join()
     print("External message handler thread shutdown")
 
 
