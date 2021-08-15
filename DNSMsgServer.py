@@ -39,7 +39,6 @@ class DomainName(str):
 # Define Parameters
 D = DomainName(args['domain']+".")
 IP = args['ip']
-PORT = args['port']
 TTL = 60
 
 
