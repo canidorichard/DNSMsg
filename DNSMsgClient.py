@@ -84,7 +84,7 @@ def main(args):
     if(int(ip_list[1]) != header[12] or int(ip_list[2]) != header[13] or int(ip_list[3]) != header[14]):
       print("FAILED")
       sys.exit(1)
-    else
+    else:
       print("PASSED")
       sys.exit(0)
 
