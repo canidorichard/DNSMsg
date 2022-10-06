@@ -19,6 +19,8 @@ DNSMsgServer must be run on an authoritative DNS server otherwise queries from D
 
 By default the DNSMsgServer will listen on UDP/53 but the port can be changed using "-p [port]".  The server will listen on TCP by specifying "-l tcp" or both TCP and UDP by specifying "-l both".  If you require a specific IP address to be returned in response to DNS queries then -i [ip] is what you are looking for.
 
+The server can be requested to call an external application on receipt of each message by using "-c [cmd]".  If {id} and {msg} are placed in the command string then they will be substituded for the client id and the message.
+
 # DNSMsgClient
 Usage: python3 DNSMsgClient.py -d [domain] -m [message]
 
