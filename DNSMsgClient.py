@@ -38,7 +38,7 @@ def main(args):
 
   # Calculate max payload size
   max_enc_payload_length = int((max_dns_msg_len - len(args['domain'])) - 4) # Allow for 4 label seperators
-  max_dec_payload_length = int((max_enc_payload_length / 8) * 5) 
+  max_dec_payload_length = math.ceil(max_enc_payload_length / 1.6) - 3
   max_dec_message_length  = max_dec_payload_length - header_len
 
   # Generate messages
@@ -86,7 +86,6 @@ def main(args):
       sys.exit(1)
     else:
       print("PASSED")
-      sys.exit(0)
 
 
 if __name__ == '__main__':
