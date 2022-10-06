@@ -29,7 +29,8 @@ def main(args):
   msg_status = 0x30
 
   # Get bytes of MAC address
-  mac = hex(uuid.getnode())[2:].upper()
+  mac = "000000000000" + hex(uuid.getnode())[2:].upper()
+  mac = mac[-12:]
 
   # Use millis in since last minute as unique counter value
   dt = datetime.datetime.now()
