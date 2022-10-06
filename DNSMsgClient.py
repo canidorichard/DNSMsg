@@ -38,7 +38,7 @@ def main(args):
 
   # Calculate max payload size
   max_enc_payload_length = int((max_dns_msg_len - len(args['domain'])) - 4) # Allow for 4 label seperators
-  max_dec_payload_length = int(max_enc_payload_length / 8) * 5 
+  max_dec_payload_length = int((max_enc_payload_length / 8) * 5) 
   max_dec_message_length  = max_dec_payload_length - header_len
 
   # Generate messages
@@ -77,14 +77,16 @@ def main(args):
       dnsmsg = dnsmsg + "."
     dnsmsg = dnsmsg + args['domain']
     # Send message
-    print("Sending DNS message: ", end='')
+    print("Sending Message: ", end='')
     ip = socket.gethostbyname(dnsmsg)
-    print(ip)
     # Verify response
     ip_list = ip.split('.')
     if(int(ip_list[1]) != header[12] or int(ip_list[2]) != header[13] or int(ip_list[3]) != header[14]):
-      print("Failed: Invalid response")
+      print("FAILED")
       sys.exit(1)
+    else
+      print("PASSED")
+      sys.exit(0)
 
 
 if __name__ == '__main__':
